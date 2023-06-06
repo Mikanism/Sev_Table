@@ -31,7 +31,7 @@ with load:
     def load_data(file):
         df = pd.read_excel(file)
         df['Создана'] = df['Создана'].dt.date
-        df.to_sql('info', con)
+        df.to_sql('info', con, if_exists = 'replace')
         
     file = st.file_uploader('Загрузите xlsx Файл')
 
@@ -40,13 +40,6 @@ with load:
 
     if file is not None:
         load_data(file)
-
-    cc1, cc2 = st.columns([3, 1])
-    with cc2:
-        reloud = st.button('Перезагрузить')
-        if reloud:
-            st.cache_data.clear()
-            st.experimental_rerun()
 
 with main:
     if "disabled" not in st.session_state:
