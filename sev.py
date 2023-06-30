@@ -3,9 +3,8 @@ import sqlite3
 import pandas as pd
 import plotly.express as px
 
-filds1 = ['ИНФОРМАЦИЯ ПО ОТЧЕТУ: Площадь',
-       'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Год постройки',
-       'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Материал стен',
+filds1 = ['Наименование ЖК', 'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Площадь',
+       'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Год постройки', 'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Материал стен',
        'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Этажность', 'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Отделка',
        'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Комнатность']
 
@@ -41,14 +40,34 @@ with load:
     if file is not None:
         load_data(file)
 
+    # cc1, cc2 = st.columns([3, 1])
+    # with cc2:
+    #     reloud = st.button('Перезагрузить')
+    #     if reloud:
+    #         st.cache_data.clear()
+    #         st.experimental_rerun()
+
 with main:
     if "disabled" not in st.session_state:
         st.session_state["disabled"] = True
 
     def districts(area):
-        sql_d = f'SELECT "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" FROM info WHERE "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{area}" GROUP BY "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район"'
+        if len(area) == 1:
+            sql_d = f'SELECT "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" FROM info WHERE "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{area[0]}" GROUP BY "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район"'       
+        else:
+            sql_d = f'SELECT "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" FROM info WHERE "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" in {tuple(area)} GROUP BY "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район"'
         d = [i[0] for i in cur.execute(sql_d).fetchall() if i[0] is not None]
-        d.insert(0, 'ВСЕ')
+        return d
+    
+    def j_k(value, city = False):
+        if city:
+            sql_d = f'SELECT "Наименование ЖК" FROM info WHERE "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Город" = "{value}" GROUP BY "Наименование ЖК"'
+        else:
+            if len(value) == 1:
+                sql_d = f'SELECT "Наименование ЖК" FROM info WHERE "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{value[0]}" GROUP BY "Наименование ЖК"'
+            else:
+                sql_d = f'SELECT "Наименование ЖК" FROM info WHERE "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" in {tuple(value)} GROUP BY "Наименование ЖК"'
+        d = [i[0] for i in cur.execute(sql_d).fetchall() if i[0] is not None]
         return d
 
     try:
@@ -57,9 +76,13 @@ with main:
             city = st.selectbox('Город', cities, disabled = st.session_state.disabled)
             st.checkbox('Москва', key= "disabled")
         with c2:
-            area = st.selectbox('Округ', ['НАО', 'ЗАО', 'ЮВАО', 'САО', 'СЗАО', 'ЮАО', 'СВАО', 'ЦАО', 'ВАО','ЮЗАО', 'ЗелАО', 'ТАО'], disabled = not st.session_state.disabled)
+            area = st.multiselect('Округ', ['НАО', 'ЗАО', 'ЮВАО', 'САО', 'СЗАО', 'ЮАО', 'СВАО', 'ЦАО', 'ВАО','ЮЗАО', 'ЗелАО', 'ТАО'], disabled = not st.session_state.disabled)
+            district = st.multiselect('Район', districts(area), disabled = not st.session_state.disabled)
         with c3:
-            district = st.selectbox('Район', districts(area), disabled = not st.session_state.disabled)
+            if not st.session_state.disabled:
+                jk = st.multiselect('Наименование ЖК', j_k(city, city = True))
+            else:
+                jk = st.multiselect('Наименование ЖК', j_k(area))
         st.divider()
 
         col1, col2, col3 = st.columns(3)
@@ -81,7 +104,7 @@ with main:
         if upload:
             sql = 'SELECT "Создана", "Номер договора", "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м", "Адрес объекта оценки", '
             
-            if not st.session_state.disabled:
+            if not st.session_state.disabled: # Добавление к запросу
                 sql += '"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Город"'
             else:
                 sql += '"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ", "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район"'
@@ -89,23 +112,42 @@ with main:
             sql += ''.join(f', "{i}"' for i in filds1)
             sql += ' FROM info WHERE '
 
-            if not st.session_state.disabled:
+            if not st.session_state.disabled: # Выдор по выбранным данным
                 sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Город" = "{city}" AND '
-            elif district == 'ВСЕ':
-                sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{area}" AND '
-            else:
-                sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{area}" AND "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" = "{district}" AND '
 
-            ans = [square, year, material, floar, remont, rooms]
+            elif district == []:
+                if len(area) == 1:
+                    sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{area[0]}" AND '
+                else:
+                    sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" in {tuple(area)} AND '
+            else:
+                if len(area) == 1:
+                    if len(district) == 1:
+                        sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{area[0]}" AND "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" = "{district[0]}" AND '
+                    else:
+                        sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" = "{area[0]}" AND "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" in {tuple(district)} AND '
+                else:
+                    if len(district) == 1:
+                        sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" in {tuple(area)} AND "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" = "{district[0]}" AND '
+                    else:
+                        sql += f'"ИНФОРМАЦИЯ ПО ОТЧЕТУ: Округ" in {tuple(area)} AND "ИНФОРМАЦИЯ ПО ОТЧЕТУ: Район" in {tuple(district)} AND '
+
+
+            
+
+            ans = [jk, square, year, material, floar, remont, rooms]
 
             for i in range(len(filds1)):
                 if ans[i] != []:
                     sql += '('
                     for j in ans[i]:
                         sql += f'"{filds1[i]}" = "{j}" OR '
+                        # sql += f'"{filds1[i]}" = "{j}" OR '
                     sql = sql[:-4]
                     sql += ') AND '
             sql = sql[:-5]
+            print(sql)
+
 
             df = pd.read_sql(sql, con)
             if len(df) > 1:
