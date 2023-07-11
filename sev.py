@@ -156,12 +156,12 @@ with main:
                 chart['ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м'] = chart['ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м'].apply(lambda x: x.replace(' ', '').replace('р.', '').replace('р', '')).astype(float).astype(int)
 
                 minn = '{0:,}'.format(chart["ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м"].min()).replace(',', ' ')
-                meann = '{0:,}'.format(chart["ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м"].mean().astype(int)).replace(',', ' ')
+                media = '{0:,}'.format(chart["ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м"].median().astype(int)).replace(',', ' ')
                 maxx =  '{0:,}'.format(chart["ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м"].max()).replace(',', ' ')
 
                 fig = px.line(chart, x = 'Создана', y = 'ИНФОРМАЦИЯ ПО ОТЧЕТУ: Стоимость 1 кв.м', color_discrete_sequence = ["#ff0000"], 
                             title = f'Мин. цена = {minn}р.\
-                                Ср. цена = {meann}р.\
+                                Медиана = {media}р.\
                                 Макс. цена = {maxx}р.')
                 st.plotly_chart(fig)
 
